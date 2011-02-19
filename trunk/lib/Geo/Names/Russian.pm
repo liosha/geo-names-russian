@@ -2,11 +2,6 @@
 # $Id$
 #
 
-use 5.010;
-use strict;
-use warnings;
-use utf8;
-
 package Geo::Names::Russian;
 # ABSTRACT: parse and split russian geographical names
 
@@ -23,6 +18,12 @@ Geo::Names::Russian - parse and split russian geographical names
     }
 
 =cut
+
+use 5.010;
+use strict;
+use warnings;
+use utf8;
+
 
 
 use base qw{ Exporter };
@@ -90,6 +91,7 @@ for my $rec ( @addition_words ) {
 
 my @prof_words = qw{
         академика архитектора
+        летчика лётчика
         адмирала генерала маршала
     };
 
@@ -181,7 +183,7 @@ sub streetname_split {
     # вытаскиваем вспомогательные имена
     my @additions;
     for my $i ( reverse 0 .. $#words ) {
-        last unless @words > 1;
+        last if @words <= 1;
         next unless any { $words[$i] =~ $_->[1] } @addition_words;
         push @additions, splice @words, $i, 1;
     }
@@ -212,7 +214,7 @@ Returns unified keystring for street
 sub streetname_keystring {
     my ($street, $suburb) = @_;
 
-    ( $suburb ||= q{} ) =~ s/^(дер|г|пос)[\.\s]+//i;
+    ( $suburb ||= q{} ) =~ s/ ^ (дер|г|пос) [\.\s]+ //ix;
     return uc $suburb unless $street;
 
     my ( $status, $name, $addition, $number, $km ) = streetname_split( $street );
