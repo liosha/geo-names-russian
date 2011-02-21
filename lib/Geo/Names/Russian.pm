@@ -1,9 +1,16 @@
 ﻿#
-# $Id$
+# $Id:$
 #
+
+use 5.010;
+use strict;
+use warnings;
+use utf8;
+
 
 package Geo::Names::Russian;
 # ABSTRACT: parse and split russian geographical names
+
 
 =head1 NAME
 
@@ -18,12 +25,6 @@ Geo::Names::Russian - parse and split russian geographical names
     }
 
 =cut
-
-use 5.010;
-use strict;
-use warnings;
-use utf8;
-
 
 
 use base qw{ Exporter };
@@ -68,6 +69,7 @@ my @statuses = (
     [ 'станция'     =>  'ст(?:анц)?'        ],
     [ 'хутор'       =>  'х(?:ут)'           ],
     [ 'разъезд'     =>  'р(?:аз)-д'         ],
+    [ 'парк'        =>  'парк'              ],
 );
 
 for my $rec ( @statuses ) {
@@ -76,13 +78,13 @@ for my $rec ( @statuses ) {
 
 
 my @addition_words = (
-    [ 'Ниж'     =>  'НИЖН(?:\.|ИЙ|ОЕ|ЯЯ)'       ],
+    [ 'Ниж'     =>  'Н\.?|НИЖН(?:\.|ИЙ|ЕЕ|ЯЯ)'  ],
     [ 'Сред'    =>  'СР\.?|СРЕДН(?:\.|ИЙ|ЕЕ|ЯЯ)'],
-    [ 'Верх'    =>  'ВЕРХН?(?:\.|ИЙ|ЕЕ|ЯЯ)'     ],
+    [ 'Верх'    =>  'В\.?|ВЕРХН?(?:\.|ИЙ|ЕЕ|ЯЯ)'],
     [ 'Стар'    =>  'СТ\.?|СТАР(?:ЫЙ|АЯ|ОЕ|\.)' ],
     [ 'Нов'     =>  'НОВ(?:АЯ|ЫЙ|ОЕ|\.)'        ],
-    [ 'Мал'     =>  'МАЛ(?:АЯ|ЫЙ|ОЕ|\.)'        ],
-    [ 'Бол'     =>  'БОЛЬШ(?:АЯ|ОЙ|ОЕ|\.)'      ],
+    [ 'Мал'     =>  'М\.?|МАЛ(?:АЯ|ЫЙ|ОЕ|\.)'   ],
+    [ 'Бол'     =>  'Б\.?|БОЛЬШ(?:АЯ|ОЙ|ОЕ|\.)' ],
 );
 
 for my $rec ( @addition_words ) {
@@ -123,6 +125,7 @@ sub streetname_split {
     # прицепляем инициалы к фамилии
     for my $i ( reverse 0 .. $#words-1 ) {
         next unless $words[$i] =~ / ^ \p{IsUpper} \.? $ /xms;
+        next if $words[$i+1] && $words[$i+1] =~ / (?: [ыи]й | я ) $ /xms;     # тут вряд ли инициалы
         $words[$i] .= q{.} unless $words[$i] =~ /\.$/xms;
         $words[$i] .= splice @words, $i+1, 1;
     }
@@ -135,7 +138,7 @@ sub streetname_split {
     my $km = q{};
     my $km_re = qr{ km | км | километр }xi;
     for my $i ( 1 .. $#words ) {
-        if ( @words > 2  &&  $words[$i-1] =~ / ^ \d+ (?: -? \S{1,3} ) $ /xms  &&  $words[$i] =~ / ^ $km_re $ /xms ) {
+        if ( @words > 2  &&  $words[$i-1] =~ / ^ \d+ (?: -? \S{1,3} )? $ /xms  &&  $words[$i] =~ / ^ $km_re $ /xms ) {
             $km = join q{ }, splice @words, $i-1, 2;
             last;
         }
@@ -209,7 +212,7 @@ Returns unified keystring for street
 
     my $street = '2-й пр. Марьиной Рощи';
     my $key = streetname_keystring( $street );
-    # 'ПРОЕЗД 2 МАРЬИНОЙ РОЩИ'
+    # 'МАРЬИНОЙ РОЩИ  2 ПРОЕЗД'
 
 =cut
 
@@ -238,14 +241,9 @@ sub streetname_keystring {
         }
     }
 
-    my $result = join( q{ }, grep {$_}
-                    uc($suburb || q{}),
-                    uc($status), 
-                    sort map {uc}
-                        split( /\s+/, $name ),
-                        split( /\s+/, $addition ),
-                        $number, $km ) ;
-
+    my $result = uc join( q{ },  $name, $addition, $number, $status );
+    $result .= uc " $km"        if $km || $suburb;
+    $result .= uc " $suburb"    if $suburb;
     $result =~ s/Ё/Е/gi;
     return $result;
 }
