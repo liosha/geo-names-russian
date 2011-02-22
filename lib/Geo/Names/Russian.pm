@@ -70,6 +70,7 @@ my @statuses = (
     [ 'хутор'       =>  'х(?:ут)'           ],
     [ 'разъезд'     =>  'р(?:аз)-д'         ],
     [ 'парк'        =>  'парк'              ],
+    [ 'деревня'     =>  'дер'               ],
 );
 
 for my $rec ( @statuses ) {
@@ -164,6 +165,7 @@ sub streetname_split {
     # вытаскиваем правильно заданный номер
     my $number = q{};
     for my $i ( 0 .. $#words ) {
+        last if @words < 2;
         next unless 
             ( !$status || $status =~ /[аяь]$/ixms ) && $words[$i] =~ m{ ^ \d{1,2} -? а?я $ }ixms        # женский род
             || $status && $status =~ /[е]$/ixms     && $words[$i] =~ m{ ^ \d{1,2} -? о?е $ }ixms        # средний
@@ -241,7 +243,8 @@ sub streetname_keystring {
         }
     }
 
-    my $result = uc join( q{ },  $name, $addition, $number, $status );
+    my $result = uc join( q{ },  $name, $addition, $status );
+    $result .= uc " $number"    if $number || $km || $suburb;
     $result .= uc " $km"        if $km || $suburb;
     $result .= uc " $suburb"    if $suburb;
     $result =~ s/Ё/Е/gi;
